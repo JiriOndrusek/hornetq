@@ -539,6 +539,7 @@ public class HornetQConnectionFactoryTest extends UnitTestCase
       HornetQConnectionFactory factory = null;
       if (useJndi)
       {
+         //todo(jondruse)
          Hashtable<String, String> props = InVMInitialContextFactory.getJNDIEnvironment();
          props.put("connectionFactory.VmConnectionFactory", "vm://0" + query);
          Context ctx = new InitialContext(props);

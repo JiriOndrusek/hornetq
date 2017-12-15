@@ -163,27 +163,25 @@ public class ObjectInputStreamWithClassLoader extends ObjectInputStream
 
    // Private --------------------------------------------------------------------------------------
 
-   private Class resolveClass0(final ObjectStreamClass desc) throws IOException, ClassNotFoundException
-   {
+   private Class resolveClass0(final ObjectStreamClass desc) throws IOException, ClassNotFoundException {
       String name = desc.getName();
       ClassLoader loader = Thread.currentThread().getContextClassLoader();
-      try
-      {
+      Class clazz;
+      try {
          // HORNETQ-747 https://issues.jboss.org/browse/HORNETQ-747
          // Use Class.forName instead of ClassLoader.loadClass to avoid issues with loading arrays
-         Class clazz = Class.forName(name, false, loader);
+         clazz = Class.forName(name, false, loader);
          // sanity check only.. if a classLoader can't find a clazz, it will throw an exception
-         if (clazz == null)
-         {
+         if (clazz == null) {
             clazz = super.resolveClass(desc);
          }
 
-         return checkSecurity(clazz);
+
+      } catch (ClassNotFoundException e) {
+         return super.resolveClass(desc);
       }
-      catch (ClassNotFoundException e)
-      {
-         return checkSecurity(super.resolveClass(desc));
-      }
+
+      return checkSecurity(clazz);
    }
 
    private Class resolveProxyClass0(String[] interfaces) throws IOException, ClassNotFoundException
