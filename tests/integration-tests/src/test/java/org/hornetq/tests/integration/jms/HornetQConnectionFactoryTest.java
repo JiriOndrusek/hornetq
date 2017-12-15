@@ -12,18 +12,34 @@
  */
 
 package org.hornetq.tests.integration.jms;
+import org.hornetq.api.core.SimpleString;
+import org.hornetq.core.client.impl.ServerLocatorImpl;
+import org.hornetq.core.remoting.impl.invm.InVMConnectorFactory;
+import org.hornetq.jms.tests.tools.container.InVMInitialContextFactory;
+import org.hornetq.tests.integration.jms.serializables.TestClass1;
+import org.hornetq.utils.ObjectInputStreamWithClassLoader;
 import org.junit.Before;
 
+import org.junit.Ignore;
 import org.junit.Test;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Hashtable;
 import java.util.List;
 import java.util.Map;
 
 import javax.jms.Connection;
 import javax.jms.JMSException;
+import javax.jms.MessageConsumer;
+import javax.jms.MessageProducer;
+import javax.jms.ObjectMessage;
+import javax.jms.Queue;
+import javax.jms.QueueBrowser;
 import javax.jms.Session;
+import javax.naming.Context;
+import javax.naming.InitialContext;
 
 import org.junit.Assert;
 
@@ -357,6 +373,255 @@ public class HornetQConnectionFactoryTest extends UnitTestCase
       Assert.assertEquals(reconnectAttempts, cf.getReconnectAttempts());
 
       cf.close();
+   }
+
+   @Test
+   public void testDeserializationOptions() throws Exception
+   {
+      testDeserializationOptions(false, false);
+   }
+
+   @Test
+   @Ignore //todo(jondruse) how to access jndi connectionFactory?
+   public void testDeserializationOptionsJndi() throws Exception
+   {
+      testDeserializationOptions(true, false);
+   }
+
+   @Test
+   public void testDeserializationOptionsBrowser() throws Exception
+   {
+      testDeserializationOptions(false, true);
+   }
+
+   @Test
+   @Ignore //todo(jondruse) how to access jndi connectionFactory?
+   public void testDeserializationOptionsJndiBrowser() throws Exception
+   {
+      testDeserializationOptions(true, true);
+   }
+
+   private void testDeserializationOptions(boolean useJndi, boolean useBrowser) throws Exception
+   {
+      String qname = "SerialTestQueue";
+      SimpleString qaddr = new SimpleString("jms.queue." + qname);
+      liveService.createQueue(qaddr, qaddr, null, true, false);
+
+      //default ok
+      String blackList = null;
+      String whiteList = null;
+      Object obj = receiveObjectMessage(blackList, whiteList, qname, new TestClass1(), useJndi, useBrowser);
+      assertTrue("Object is " + obj, obj instanceof TestClass1);
+
+      //not in the white list
+      blackList = "java.lang";
+      whiteList = "some.other.package1";
+      obj = receiveObjectMessage(blackList, whiteList, qname, new TestClass1(), useJndi, useBrowser);
+      assertTrue("Object is " + obj, obj instanceof JMSException);
+      //but String always trusted
+      obj = receiveObjectMessage(blackList, whiteList, qname, new String("hello"), useJndi, useBrowser);
+      assertTrue("java.lang.String always trusted ", "hello".equals(obj));
+
+      //in the blacklist
+      blackList = "org.hornetq.tests.integration.jms.serializables";
+      whiteList = "org.hornetq.tests.integration.jms.serializables";
+      obj = receiveObjectMessage(blackList, whiteList, qname, new TestClass1(), useJndi, useBrowser);
+      assertTrue("Object is " + obj, obj instanceof JMSException);
+
+      //black list parent package
+      blackList = "org.hornetq";
+      whiteList = "org.hornetq.tests.integration.jms.serializables";
+      obj = receiveObjectMessage(blackList, whiteList, qname, new TestClass1(), useJndi, useBrowser);
+      assertTrue("Object is " + obj, obj instanceof JMSException);
+
+      //in white list
+      blackList = "some.other.package";
+      whiteList = "org.hornetq.tests.integration.jms.serializables";
+      obj = receiveObjectMessage(blackList, whiteList, qname, new TestClass1(), useJndi, useBrowser);
+      assertTrue("Object is " + obj, obj instanceof TestClass1);
+
+      //parent in white list
+      blackList = "some.other.package";
+      whiteList = "org.hornetq.tests.integration.jms";
+      obj = receiveObjectMessage(blackList, whiteList, qname, new TestClass1(), useJndi, useBrowser);
+      assertTrue("Object is " + obj, obj instanceof TestClass1);
+
+      //sub package in white list
+      blackList = "some.other.package";
+      whiteList = "org.hornetq.tests.integration.jms.serializables.pkg1";
+      obj = receiveObjectMessage(blackList, whiteList, qname, new TestClass1(), useJndi, useBrowser);
+      assertTrue("Object is " + obj, obj instanceof JMSException);
+
+      //wild card white list but black listed
+      blackList = "org.hornetq.tests.integration.jms.serializables";
+      whiteList = "*";
+      obj = receiveObjectMessage(blackList, whiteList, qname, new TestClass1(), useJndi, useBrowser);
+      assertTrue("Object is " + obj, obj instanceof JMSException);
+
+      //wild card white list and not black listed
+      blackList = "some.other.package";
+      whiteList = "*";
+      obj = receiveObjectMessage(blackList, whiteList, qname, new TestClass1(), useJndi, useBrowser);
+      assertTrue("Object is " + obj, obj instanceof TestClass1);
+
+      //wild card black list
+      blackList = "*";
+      whiteList = "*";
+      obj = receiveObjectMessage(blackList, whiteList, qname, new TestClass1(), useJndi, useBrowser);
+      assertTrue("Object is " + obj, obj instanceof JMSException);
+   }
+
+   @Test
+   public void testSystemPropertyBlackWhiteListDefault() throws Exception
+   {
+      System.setProperty(ObjectInputStreamWithClassLoader.BLACKLIST_PROPERTY, "*");
+      System.setProperty(ObjectInputStreamWithClassLoader.WHITELIST_PROPERTY, "some.other.package");
+
+      String qname = "SerialTestQueue";
+      SimpleString qaddr = new SimpleString("jms.queue." + qname);
+      liveService.createQueue(qaddr, qaddr, null, true, false);
+
+      try
+      {
+         String blackList = null;
+         String whiteList = null;
+         Object obj = receiveObjectMessage(blackList, whiteList, qname, new TestClass1(), false, false);
+         assertTrue("Object is " + obj, obj instanceof JMSException);
+         //but String always trusted
+         obj = receiveObjectMessage(blackList, whiteList, qname, new String("hello"), false, false);
+         assertTrue("java.lang.String always trusted " + obj, "hello".equals(obj));
+
+         //override
+         blackList = "some.other.package";
+         whiteList = "org.hornetq.tests.integration";
+         obj = receiveObjectMessage(blackList, whiteList, qname, new TestClass1(), false, false);
+         assertTrue("Object is " + obj, obj instanceof TestClass1);
+         //but String always trusted
+         obj = receiveObjectMessage(blackList, whiteList, qname, new String("hello"), false, false);
+         assertTrue("java.lang.String always trusted " + obj, "hello".equals(obj));
+      }
+      finally
+      {
+         System.clearProperty(ObjectInputStreamWithClassLoader.BLACKLIST_PROPERTY);
+         System.clearProperty(ObjectInputStreamWithClassLoader.WHITELIST_PROPERTY);
+      }
+   }
+
+   private Object receiveObjectMessage(String blackList, String whiteList, String qname,
+                                       Serializable obj, boolean useJndi, boolean useBrowser) throws Exception
+   {
+      sendObjectMessage(qname, obj);
+
+      StringBuilder query = new StringBuilder("");
+      if (blackList != null)
+      {
+         query.append("?");
+         query.append("deserializationBlackList=");
+         query.append(blackList);
+
+         if (whiteList != null)
+         {
+            query.append("&");
+            query.append("deserializationWhiteList=");
+            query.append(whiteList);
+         }
+      }
+      else
+      {
+         if (whiteList != null)
+         {
+            query.append("?deserializationWhiteList=");
+            query.append(whiteList);
+         }
+      }
+
+      System.out.println("query string: " + query);
+      HornetQConnectionFactory factory = null;
+      if (useJndi)
+      {
+         Hashtable<String, String> props = InVMInitialContextFactory.getJNDIEnvironment();
+         props.put("connectionFactory.VmConnectionFactory", "vm://0" + query);
+         Context ctx = new InitialContext(props);
+         factory = (HornetQConnectionFactory) ctx.lookup("java://");
+
+//         Context ic = new InitialContext(ServerManagement.getJNDIEnvironment(0));
+//         ConnectionFactory cf = (ConnectionFactory)ic.lookup("/ConnectionFactory");
+      }
+      else
+      {
+         HashMap<String, Object> transportConfig = new HashMap<String, Object>();
+
+         factory = new HornetQConnectionFactory(new ServerLocatorImpl(false, new TransportConfiguration(InVMConnectorFactory.class.getName(), transportConfig)));
+         factory.setDeserializationBlackList(blackList);
+         factory.setDeserializationWhiteList(whiteList);
+      }
+      Connection connection = null;
+      try
+      {
+         connection = factory.createConnection();
+         connection.start();
+         Session session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
+         Queue queue = session.createQueue(qname);
+         Object result = null;
+         if (useBrowser)
+         {
+            QueueBrowser browser = session.createBrowser(queue);
+            ObjectMessage objMessage = (ObjectMessage) browser.getEnumeration().nextElement();
+            //drain message before triggering deserialization
+            MessageConsumer consumer = session.createConsumer(queue);
+            consumer.receive(5000);
+            result = objMessage.getObject();
+         }
+         else
+         {
+            MessageConsumer consumer = session.createConsumer(queue);
+            ObjectMessage objMessage = (ObjectMessage) consumer.receive(5000);
+            assertNotNull(objMessage);
+            result = objMessage.getObject();
+         }
+         return result;
+      }
+      catch (Exception e)
+      {
+         return e;
+      }
+      finally
+      {
+         if (connection != null)
+         {
+            try
+            {
+               connection.close();
+            }
+            catch (JMSException e)
+            {
+               return e;
+            }
+         }
+      }
+   }
+
+   private void sendObjectMessage(String qname, Serializable obj) throws Exception
+   {
+      HashMap<String, Object> transportConfig = new HashMap<String, Object>();
+
+      HornetQConnectionFactory factory = new HornetQConnectionFactory(new ServerLocatorImpl(false, new TransportConfiguration(InVMConnectorFactory.class.getName(), transportConfig)));
+//todo(jondruse)
+//      HornetQConnectionFactory factory = new HornetQConnectionFactory("vm://0");
+      Connection connection = factory.createConnection();
+      try
+      {
+         Session session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
+         Queue q = session.createQueue(qname);
+         MessageProducer producer = session.createProducer(q);
+         ObjectMessage objMessage = session.createObjectMessage();
+         objMessage.setObject(obj);
+         producer.send(objMessage);
+      }
+      finally
+      {
+         connection.close();
+      }
    }
 
    private void testSettersThrowException(final HornetQConnectionFactory cf)
