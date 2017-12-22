@@ -1460,6 +1460,8 @@ public class JMSServerManagerImpl implements JMSServerManager, ActivateCallback
       cf.setFailoverOnInitialConnection(cfConfig.isFailoverOnInitialConnection());
       cf.setCompressLargeMessage(cfConfig.isCompressLargeMessages());
       cf.setGroupID(cfConfig.getGroupID());
+      cf.setDeserializationBlackList(cfConfig.getDeserializationBlackList());
+      cf.setDeserializationWhiteList(cfConfig.getDeserializationWhiteList());
       return cf;
    }
 
