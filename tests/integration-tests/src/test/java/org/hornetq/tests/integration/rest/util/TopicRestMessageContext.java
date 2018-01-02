@@ -27,7 +27,7 @@ public class TopicRestMessageContext extends RestMessageContext
 
    private boolean durableSub;
 
-   public TopicRestMessageContext(RestAMQConnection restAMQConnection, String topic, boolean durable) throws IOException
+   public TopicRestMessageContext(RestHornetQConnection restAMQConnection, String topic, boolean durable) throws IOException
    {
       super(restAMQConnection, topic);
       this.durableSub = durable;

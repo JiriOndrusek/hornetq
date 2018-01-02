@@ -30,14 +30,14 @@ import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 
-public class RestAMQConnection implements Closeable
+public class RestHornetQConnection implements Closeable
 {
    private CloseableHttpClient httpClient = HttpClients.createDefault();
 
    private String targetUri;
    private List<RestMessageContext> contexts = new ArrayList<RestMessageContext>();
 
-   public RestAMQConnection(String targetUri)
+   public RestHornetQConnection(String targetUri)
    {
       this.targetUri = targetUri;
    }

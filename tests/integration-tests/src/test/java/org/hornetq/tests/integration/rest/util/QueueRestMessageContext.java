@@ -25,7 +25,7 @@ public class QueueRestMessageContext extends RestMessageContext
 {
    public static final String PREFIX_QUEUE = "/queues/jms.queue.";
 
-   public QueueRestMessageContext(RestAMQConnection restAMQConnection, String queue) throws IOException
+   public QueueRestMessageContext(RestHornetQConnection restAMQConnection, String queue) throws IOException
    {
       super(restAMQConnection, queue);
    }

@@ -17,7 +17,6 @@
 package org.hornetq.tests.integration.rest;
 
 import javax.jms.Connection;
-import javax.jms.ConnectionFactory;
 import javax.jms.Destination;
 import javax.jms.JMSException;
 import javax.jms.MessageProducer;
@@ -29,11 +28,15 @@ import javax.xml.bind.Unmarshaller;
 import java.io.File;
 import java.io.Serializable;
 import java.io.StringReader;
+import java.util.HashMap;
 
+import org.hornetq.api.core.TransportConfiguration;
+import org.hornetq.core.client.impl.ServerLocatorImpl;
+import org.hornetq.core.remoting.impl.invm.InVMConnectorFactory;
+import org.hornetq.jms.client.HornetQConnectionFactory;
 import org.hornetq.jms.client.HornetQDestination;
-import org.hornetq.jms.client.HornetQJMSConnectionFactory;
 import org.hornetq.rest.HttpHeaderProperty;
-import org.hornetq.tests.integration.rest.util.RestAMQConnection;
+import org.hornetq.tests.integration.rest.util.RestHornetQConnection;
 import org.hornetq.tests.integration.rest.util.RestMessageContext;
 import org.junit.After;
 import org.junit.Before;
@@ -42,7 +45,7 @@ import org.junit.Test;
 public class RestDeserializationTest extends RestTestBase
 {
 
-   private RestAMQConnection restConnection;
+   private RestHornetQConnection restConnection;
 
    @Before
    public void setUp() throws Exception
@@ -162,7 +165,7 @@ public class RestDeserializationTest extends RestTestBase
       String uri = server.getURI().toASCIIString();
       System.out.println("Sever started with uri: " + uri);
 
-      restConnection = new RestAMQConnection(uri);
+      restConnection = new RestHornetQConnection(uri);
    }
 
    private Object xmlToObject(String xmlString) throws JAXBException
@@ -184,8 +187,11 @@ public class RestDeserializationTest extends RestTestBase
    private void jmsSendMessage(Serializable value, String destName, boolean isQueue) throws JMSException
    {
       //todo(jondruse)
-      ConnectionFactory factory = new HornetQJMSConnectionFactory();
+//      ConnectionFactory factory = new HornetQJMSConnectionFactory();
 //      ConnectionFactory factory = new HornetQJMSConnectionFactory("tcp://localhost:61616");
+      HashMap<String, Object> transportConfig = new HashMap<String, Object>();
+
+      HornetQConnectionFactory factory = new HornetQConnectionFactory(new ServerLocatorImpl(false, new TransportConfiguration(InVMConnectorFactory.class.getName(), transportConfig)));
       String jmsDest;
       if (isQueue)
       {

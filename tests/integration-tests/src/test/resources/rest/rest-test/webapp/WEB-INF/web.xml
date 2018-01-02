@@ -52,7 +52,7 @@ under the License.
     </listener>
 
     <listener>
-        <listener-class>org.apache.activemq.artemis.rest.integration.RestMessagingBootstrapListener</listener-class>
+        <listener-class>org.hornetq.rest.integration.RestMessagingBootstrapListener</listener-class>
     </listener>
 
 </web-app>

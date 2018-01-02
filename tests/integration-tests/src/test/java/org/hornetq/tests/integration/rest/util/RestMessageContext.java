@@ -46,7 +46,7 @@ public abstract class RestMessageContext implements Closeable
    public static final String KEY_MSG_ACK_NEXT = "msg-acknowledge-next";
    public static final String KEY_MSG_ACK = "msg-acknowledgement";
 
-   protected RestAMQConnection connection;
+   protected RestHornetQConnection connection;
    protected String destination;
    protected Map<String, String> contextMap = new HashMap<String, String>();
 
@@ -54,12 +54,12 @@ public abstract class RestMessageContext implements Closeable
    protected boolean autoAck;
    protected boolean pushConsumer;
 
-   public RestMessageContext(RestAMQConnection restAMQConnection, String dest) throws IOException
+   public RestMessageContext(RestHornetQConnection restAMQConnection, String dest) throws IOException
    {
       this(restAMQConnection, dest, true, false);
    }
 
-   public RestMessageContext(RestAMQConnection restAMQConnection, String dest, boolean isAutoAck, boolean isPush) throws IOException
+   public RestMessageContext(RestHornetQConnection restAMQConnection, String dest, boolean isAutoAck, boolean isPush) throws IOException
    {
       this.connection = restAMQConnection;
       this.destination = dest;
