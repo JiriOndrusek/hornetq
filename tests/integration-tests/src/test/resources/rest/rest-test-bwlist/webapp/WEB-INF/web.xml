@@ -25,12 +25,12 @@ under the License.
 <web-app>
 
     <context-param>
-        <param-name>org.apache.activemq.artemis.jms.deserialization.whitelist</param-name>
+        <param-name>org.hornetq.jms.deserialization.whitelist</param-name>
         <param-value>some.other.package</param-value>
     </context-param>
     <context-param>
-        <param-name>org.apache.activemq.artemis.jms.deserialization.blacklist</param-name>
-        <param-value>org.apache.activemq.artemis.example.rest.Order</param-value>
+        <param-name>org.hornetq.jms.deserialization.blacklist</param-name>
+        <param-value>org.hornetq.tests.integration.rest.Order</param-value>
     </context-param>
 
     <filter>
@@ -50,7 +50,7 @@ under the License.
     </listener>
 
     <listener>
-        <listener-class>org.hornetq.rest.integrationn.RestMessagingBootstrapListener</listener-class>
+        <listener-class>org.hornetq.rest.integration.RestMessagingBootstrapListener</listener-class>
     </listener>
 
 </web-app>
