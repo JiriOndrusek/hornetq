@@ -52,6 +52,7 @@ public class RestDeserializationTest extends RestTestBase
    {
       super.setUp();
       createJettyServer("localhost", 12345);
+      jmsServer.createQueue(true, "orders", null, true, "/jms/orders");
    }
 
    @After
